@@ -1,0 +1,26 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual Environments
+.venv/
+venv/
+env/
+ENV/
+
+# Environment Variables (CRITICAL SECURITY)
+.env
+.env.local
+.env.*
+
+# Node / Next.js (Frontend we will add later)
+node_modules/
+.next/
+out/
+build/
+.DS_Store
+
+# Prisma
+# We don't commit Prisma's local SQLite databases if we were using them, etc.
+# But for Postgres, just standard python ignores are usually enough.
