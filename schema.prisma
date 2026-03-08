@@ -1,0 +1,73 @@
+// -----------------------------------------------------------------------------------------
+// This block tells Prisma to generate a Python asynchronous client.
+// An asynchronous client allows our FastAPI app to handle many requests at the same time
+// without waiting and blocking for the database to respond to each single query.
+// -----------------------------------------------------------------------------------------
+generator client {
+  provider             = "prisma-client-py"
+  interface            = "asyncio" // We are using async Python
+  recursive_type_depth = 5         // Helps Python handle deep relationships without errors
+}
+
+// -----------------------------------------------------------------------------------------
+// This block configures how Prisma connects to your actual database.
+// We are using PostgreSQL as our database provider.
+// The URL is fetched securely from an environment variable (.env file) called DATABASE_URL.
+// -----------------------------------------------------------------------------------------
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// -----------------------------------------------------------------------------------------
+// MODEL: User
+// Represents a person interacting with our AI agent system.
+// -----------------------------------------------------------------------------------------
+model User {
+  // Primary Key (ID): A unique string identifier. 
+  // We use UUIDs (Universally Unique Identifiers) so IDs look like "123e4567-e89b-12d3...".
+  id        String   @id @default(uuid())
+
+  // The user's chosen display name.
+  name      String
+
+  // The user's email. We use @unique to ensure no two users can share the same email address.
+  email     String   @unique
+
+  // Automatically records the exact date and time this User was created in the database.
+  createdAt DateTime @default(now())
+
+  // Relationship: One user can have many items in their inventory.
+  // This connects the User model to the Item model below.
+  items     Item[]
+}
+
+// -----------------------------------------------------------------------------------------
+// MODEL: Item
+// Represents an object in a user's inventory (e.g., a "Health Potion" or "Sword").
+// -----------------------------------------------------------------------------------------
+model Item {
+  // Primary Key (ID): Unique identifier for this exact instance of an item.
+  id        String   @id @default(uuid())
+
+  // The name of the item.
+  name      String
+
+  // How many of this item the user holds. We default it to 1 when a new item is created.
+  quantity  Int      @default(1)
+
+  // ---------------------------------------------------------------------------------------
+  // Setting up the Foreign Key Relationship back to the User.
+  // ---------------------------------------------------------------------------------------
+  
+  // This column stores the ID of the User who owns this item.
+  // It acts as a link connecting this Item row to a specific User row.
+  userId    String
+
+  // This defines the actual relation using Prisma's syntax.
+  // It says: "The 'user' field points to the 'User' model. 
+  // It matches my 'userId' field with the User's 'id' field."
+  // "onDelete: Cascade" means if the User is deleted from the database, 
+  // automatically delete all their Items too (to prevent orphaned, owner-less items).
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
