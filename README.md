@@ -7,9 +7,9 @@ An advanced, autonomous AI agent backend architecture built with LangGraph, Fast
 This project is built using a layered architecture to ensure separation of concerns, scalability, and type safety across the entire stack. 
 
 1. **Database Layer (Prisma & PostgreSQL):** The foundational data layer. It uses Prisma ORM to provide strict type safety and auto-generated database interaction functions. The schema is currently normalized for an Inventory Management system involving `Users` and `Items`.
-2. **API Layer (FastAPI) [Pending]:** An asynchronous REST API that wraps the Prisma database functions, exposing them to the internal network.
-3. **Tool/Action Layer (Pydantic & LangChain) [Pending]:** The strict Pydantic models that define the input schemas for our tools. This layer translates our backend API functions into a JSON schema the LLM can understand and interact with deterministically.
-4. **Agent Orchestration Layer (LangGraph) [Pending]:** The state-machine orchestrator. It manages the conversation state, routes user queries to the Groq LLM API, evaluates if a tool call is required, executes the tool, and routes the database response back to the LLM for final generation.
+2. **API Layer (FastAPI):** An asynchronous REST API that wraps the Prisma database functions, exposing them to the internal network.
+3. **Tool/Action Layer (Pydantic & LangChain):** The strict Pydantic models that define the input schemas for our tools. This layer translates our backend API functions into a JSON schema the LLM can understand and interact with deterministically.
+4. **Agent Orchestration Layer (LangGraph):** The state-machine orchestrator. It manages the conversation state, routes user queries to the Groq LLM API, evaluates if a tool call is required, executes the tool, and routes the database response back to the LLM for final generation.
 
 ## Technology Stack
 
@@ -19,9 +19,11 @@ This project is built using a layered architecture to ensure separation of conce
 *   **ORM:** Prisma Client Python `^0.15.0`
 *   **API Framework:** FastAPI `^0.115.0` (with Uvicorn `^0.30.6`)
 *   **LLM Inference:** Groq API `(Pending dependencies)`
-*   **Agent Framework:** LangGraph & LangChain Core `(Pending dependencies)`
+*   **Agent Framework:** LangGraph, LangChain Core & Pydantic `(Installed)`
 
-## Current System Capabilities (Phase 1)
+## Current System Capabilities
+
+### Phase 1: Database Architecture
 The foundational relational database architecture has been deployed and configured.
 *   **`schema.prisma`**: Defines the core relational data models:
     *   `User`: Primary actor in the system.
@@ -29,6 +31,12 @@ The foundational relational database architecture has been deployed and configur
 *   **`database.py`**: Contains highly optimized, asynchronous interaction functions:
     *   `get_user_by_id`: Fetches a user record and performs a SQL JOIN to pull relational inventory data.
     *   `update_item_quantity`: Updates specific tracking variables inside the Item table.
+
+### Phase 2: Agent Tool Definition
+We've established the strict protocols and interfaces for LLM interactions.
+*   **`tools.py`**: Defines the actions the agent can take, strictly typed with Pydantic:
+    *   `fetch_user_information`: LangChain `@tool` wrapping the database query, converting the Prisma model response to an LLM-friendly JSON format. 
+    *   `simple_calculator`: A secondary tool demonstrating how to offload non-deterministic LLM math to a structured, deterministic Python execution engine.
 
 ## Local Development & Setup Guide
 
