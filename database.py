@@ -1,9 +1,7 @@
 from prisma import Prisma
 
 async def get_user_by_id(user_id: str):
-    """
-    Fetches a user by their ID, including their associated inventory items.
-    """
+    """Fetches a user by their ID, including their associated inventory items."""
     db = Prisma()
     await db.connect()
     try:
@@ -16,9 +14,7 @@ async def get_user_by_id(user_id: str):
         await db.disconnect()
 
 async def update_item_quantity(item_id: str, new_quantity: int):
-    """
-    Updates the quantity of a specific inventory item.
-    """
+    """Updates the quantity of a specific inventory item."""
     db = Prisma()
     await db.connect()
     try:
