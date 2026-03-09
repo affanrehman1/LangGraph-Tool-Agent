@@ -18,12 +18,12 @@ This project is built using a layered architecture to ensure separation of conce
 *   **Database:** PostgreSQL (Hosted via Supabase)
 *   **ORM:** Prisma Client Python `^0.15.0`
 *   **API Framework:** FastAPI `^0.115.0` (with Uvicorn `^0.30.6`)
-*   **LLM Inference:** Groq API `(Pending dependencies)`
+*   **LLM Inference:** Groq API (`llama-3.3-70b-versatile`)
 *   **Agent Framework:** LangGraph, LangChain Core & Pydantic `(Installed)`
 
 ## Current System Capabilities
 
-### Phase 1: Database Architecture
+### Layer 1: Database Architecture
 The foundational relational database architecture has been deployed and configured.
 *   **`schema.prisma`**: Defines the core relational data models:
     *   `User`: Primary actor in the system.
@@ -32,11 +32,18 @@ The foundational relational database architecture has been deployed and configur
     *   `get_user_by_id`: Fetches a user record and performs a SQL JOIN to pull relational inventory data.
     *   `update_item_quantity`: Updates specific tracking variables inside the Item table.
 
-### Phase 2: Agent Tool Definition
+### Layer 2: Agent Tool Interface
 We've established the strict protocols and interfaces for LLM interactions.
 *   **`tools.py`**: Defines the actions the agent can take, strictly typed with Pydantic:
     *   `fetch_user_information`: LangChain `@tool` wrapping the database query, converting the Prisma model response to an LLM-friendly JSON format. 
     *   `simple_calculator`: A secondary tool demonstrating how to offload non-deterministic LLM math to a structured, deterministic Python execution engine.
+
+### Layer 3: Agent Orchestration
+We have integrated a LangGraph state machine to manage the loop between deterministic tool calling and LLM generation.
+*   **`agent.py`**: The core graph architecture defining nodes and edges:
+    *   **LLM Node:** An `agent` node that processes conversational state through the `llama-3.3-70b-versatile` model, analyzing whether standard text or a tool execution is required.
+    *   **Tool Node:** A `tools` node that maps the LLM's requested tool securely to our underlying Python functions.
+    *   **Conditional Routing:** Automated edge routing that loops execution between the LLM and the Tool Node until the agent synthesizes a cohesive final response.
 
 ## Local Development & Setup Guide
 
