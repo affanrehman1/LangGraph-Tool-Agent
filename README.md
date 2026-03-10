@@ -1,13 +1,16 @@
 # Autonomous LangGraph Tool-Calling Agent
 
-An advanced, autonomous AI agent backend architecture built with LangGraph, FastAPI, and Prisma ORM. This project demonstrates how to connect powerful Large Language Models (LLMs) directly to structured relational databases through automated, deterministic tool calling.
+## Introduction
+This project provides a robust backend architecture for an autonomous AI agent. By integrating LangGraph, FastAPI, and the Prisma ORM, this system enables Large Language Models (LLMs) to securely and deterministically interact with a structured PostgreSQL database. 
+
+Instead of relying solely on pre-trained knowledge to generate text, the agent dynamically writes and executes database queries, performs programmatic calculations, and streams its execution reasoning back to external client applications via a reactive REST API.
 
 ## Architecture Overview
 
 This project is built using a layered architecture to ensure separation of concerns, scalability, and type safety across the entire stack. 
 
 1. **Database Layer (Prisma & PostgreSQL):** The foundational data layer. It uses Prisma ORM to provide strict type safety and auto-generated database interaction functions. The schema is currently normalized for an Inventory Management system involving `Users` and `Items`.
-2. **API Layer (FastAPI):** An asynchronous REST API that wraps the Prisma database functions, exposing them to the internal network.
+2. **API Layer (FastAPI):** An asynchronous REST API (`main.py`) that wraps the LangGraph agent, exposing it to the internal network via Server-Sent Events (SSE) streaming connections. Strict input validation is handled by Pydantic (`api_schemas.py`).
 3. **Tool/Action Layer (Pydantic & LangChain):** The strict Pydantic models that define the input schemas for our tools. This layer translates our backend API functions into a JSON schema the LLM can understand and interact with deterministically.
 4. **Agent Orchestration Layer (LangGraph):** The state-machine orchestrator. It manages the conversation state, routes user queries to the Groq LLM API, evaluates if a tool call is required, executes the tool, and routes the database response back to the LLM for final generation.
 
@@ -44,6 +47,11 @@ We have integrated a LangGraph state machine to manage the loop between determin
     *   **LLM Node:** An `agent` node that processes conversational state through the `llama-3.3-70b-versatile` model, analyzing whether standard text or a tool execution is required.
     *   **Tool Node:** A `tools` node that maps the LLM's requested tool securely to our underlying Python functions.
     *   **Conditional Routing:** Automated edge routing that loops execution between the LLM and the Tool Node until the agent synthesizes a cohesive final response.
+
+### Layer 4: API & Streaming Server
+The agent is exposed via a high-performance ASGI web server, allowing external frontends to communicate with the Python logic.
+*   **`api_schemas.py`**: Defines strict Pydantic models (like `ChatRequest`) ensuring frontend payloads are validated before reaching the agent.
+*   **`main.py`**: A FastAPI application featuring a `/chat` POST endpoint. It uses LangGraph's `astream_events` (v2) to generate a Server-Sent Events (SSE) stream, delivering granular real-time updates of tool executions and LLM text generation back to the client.
 
 ## Local Development & Setup Guide
 
@@ -95,11 +103,23 @@ DATABASE_URL="postgresql://[USER]:[PASSWORD]@[HOST]:[PORT]/[DATABASE]"
 GROQ_API_KEY="gsk_your_key_here"
 ```
 
-### 5. Generate Database Client
+### 5. Generate and Push Database Client
 With the `.env` file configured, generate the Prisma Python client. This process reads your schema and downloads the customized Python types required to interact with your specific database structure.
 
 ```bash
 prisma generate
 ```
 
-*(Note: Pushing the schema to the live Supabase database via `prisma db push` is scheduled for Phase 2).*
+After generating the client, you must push your local schema over to your live Supabase database so the tables are actually created:
+
+```bash
+prisma db push
+```
+
+### 6. Run the API Server
+Start the FastAPI server using Uvicorn. This will expose the LangGraph agent and begin listening for incoming requests.
+
+```bash
+uvicorn main:app --reload
+```
+You can verify the backend is running by navigating to `http://localhost:8000/health` in your browser.
