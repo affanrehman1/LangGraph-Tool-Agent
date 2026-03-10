@@ -29,11 +29,11 @@ This project is built using a layered architecture to ensure separation of conce
 ### Layer 1: Database Architecture
 The foundational relational database architecture has been deployed and configured.
 *   **`schema.prisma`**: Defines the core relational data models:
-    *   `User`: Primary actor in the system.
-    *   `Item`: A cataloged entity managed by the User in a one-to-many relationship with cascading deletes.
+    *   **Inventory Models:** `User` and `Item` for catalog management with cascading deletes.
+    *   **Memory Models:** `Session` and `Message` to persistently store Agent conversational history.
 *   **`database.py`**: Contains highly optimized, asynchronous interaction functions:
-    *   `get_user_by_id`: Fetches a user record and performs a SQL JOIN to pull relational inventory data.
-    *   `update_item_quantity`: Updates specific tracking variables inside the Item table.
+    *   `get_user_by_id` & `update_item_quantity`: Custom queries for inventory manipulation.
+    *   `get_session_messages` & `save_message`: Queries handling the fetching and storing of LLM chat sequences.
 
 ### Layer 2: Agent Tool Interface
 We've established the strict protocols and interfaces for LLM interactions.
@@ -51,8 +51,10 @@ We have integrated a LangGraph state machine to manage the loop between determin
 
 ### Layer 4: API & Streaming Server
 The agent is exposed via a high-performance ASGI web server, allowing external frontends to communicate with the Python logic.
-*   **`api_schemas.py`**: Defines strict Pydantic models (like `ChatRequest`) ensuring frontend payloads are validated before reaching the agent.
-*   **`main.py`**: A FastAPI application featuring a `/chat` POST endpoint. It uses LangGraph's `astream_events` (v2) to generate a Server-Sent Events (SSE) stream, delivering granular real-time updates of tool executions and LLM text generation back to the client.
+*   **`api_schemas.py`**: Defines strict Pydantic models (like `ChatRequest`) ensuring frontend payloads are validated before reaching the agent. Crucially, handles `session_id` payload ingestion to tie incoming text to persistent histories.
+*   **`main.py`**: A FastAPI application featuring a `/chat` POST endpoint. 
+    *   **Context Rehydration:** The endpoint fetches historical `HumanMessage` and `AIMessage` models from the database dynamically based on the requested session.
+    *   **SSE Streaming:** It uses LangGraph's `astream_events` (v2) to generate a Server-Sent Events (SSE) stream, delivering granular real-time updates of tool executions and LLM text generation back to the client.
 
 ## Local Development & Setup Guide
 
