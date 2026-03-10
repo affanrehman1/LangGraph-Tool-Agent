@@ -17,7 +17,7 @@ This project is built using a layered architecture to ensure separation of conce
 ## Technology Stack
 
 ### Core Technologies
-*   **Language:** Python `^3.10`
+*   **Language:** Python `3.12` (Required for Pydantic v2 core-schema binaries)
 *   **Database:** PostgreSQL (Hosted via Supabase)
 *   **ORM:** Prisma Client Python `^0.15.0`
 *   **API Framework:** FastAPI `^0.115.0` (with Uvicorn `^0.30.6`)
@@ -59,7 +59,8 @@ The agent is exposed via a high-performance ASGI web server, allowing external f
 ### Layer 5: Frontend UI (Next.js 15+ App Router)
 A modern, dynamic user interface built to seamlessly consume the backend streaming API.
 *   **Core Stack:** Built natively using React 19, Tailwind CSS v4, and TypeScript.
-*   **UI Components:** Premium, fully-accessible dark-mode chat layout powered by `shadcn/ui` (Radix primitives). Features a sticky input drawer, a scrolling message container, and dynamic conversation bubbles.
+*   **Chat Interface:** Premium, fully-accessible dark-mode layout powered by `shadcn/ui` (Radix primitives). Features a sticky input drawer, a scrolling message container, and dynamic conversation bubbles.
+*   **Sidebar Navigation (Memory):** Features a collapsible History sidebar that automatically fetches and lists previous PostgreSQL database sessions, allowing users to hot-swap between persistent agent conversations.
 
 ## Local Development & Setup Guide
 
@@ -67,7 +68,7 @@ Follow these steps to configure the development environment and connect to the d
 
 ### 1. Prerequisites
 Ensure the following are installed on your local machine:
-*   Python 3.10 or higher.
+*   Python 3.12 (Strict requirement).
 *   Node.js (Required strictly for the Prisma CLI engine).
 *   Git.
 
