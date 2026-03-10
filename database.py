@@ -39,6 +39,18 @@ async def get_session_messages(session_id: str) -> list:
     finally:
         await db.disconnect()
 
+async def get_all_sessions() -> list:
+    """Fetch all stored chat sessions, ordered by most recent first."""
+    db = Prisma()
+    await db.connect()
+    try:
+        sessions = await db.session.find_many(
+            order={"createdAt": "desc"}
+        )
+        return [{"id": s.id, "createdAt": s.createdAt} for s in sessions]
+    finally:
+        await db.disconnect()
+
 async def save_message(session_id: str, role: str, content: str):
     """Save a single text message to the history."""
     db = Prisma()

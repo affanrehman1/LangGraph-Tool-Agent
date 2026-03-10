@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { SendHorizontal, Bot, User } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
@@ -15,15 +15,57 @@ type Message = {
   content: string
 }
 
+type Session = {
+  id: string
+  createdAt: string
+}
+
 export default function Home() {
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: "1",
-      role: "ai",
-      content: "Hello! I am your autonomous AI agent. How can I assist you today?",
-    },
-  ])
+  const [messages, setMessages] = useState<Message[]>([])
+  const [sessions, setSessions] = useState<Session[]>([])
+  const [activeSessionId, setActiveSessionId] = useState<string | null>(null)
   const [inputValue, setInputValue] = useState("")
+
+  // Fetch all sessions on load
+  useEffect(() => {
+    fetch("http://localhost:8000/sessions")
+      .then((res) => res.json())
+      .then((data) => {
+        setSessions(data)
+        if (data.length > 0 && !activeSessionId) {
+          setActiveSessionId(data[0].id)
+        }
+      })
+      .catch((err) => console.error("Failed to fetch sessions:", err))
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Fetch messages when a session is selected
+  useEffect(() => {
+    if (!activeSessionId) return
+    
+    // Optimistic clear
+    setMessages([])
+
+    fetch(`http://localhost:8000/sessions/${activeSessionId}/messages`)
+      .then((res) => res.json())
+      .then((data) => {
+        setMessages(
+          data.map((m: any, i: number) => ({
+            id: i.toString(),
+            role: m.role,
+            content: m.content,
+          }))
+        )
+      })
+      .catch((err) => console.error("Failed to fetch messages:", err))
+  }, [activeSessionId])
+
+  const handleNewSession = () => {
+    setActiveSessionId(crypto.randomUUID())
+    setMessages([{
+        id: "intro", role: "ai", content: "Hello! I am your autonomous AI agent. Let's start a new session."
+    }])
+  }
 
   const handleSend = () => {
     if (!inputValue.trim()) return
@@ -41,12 +83,32 @@ export default function Home() {
 
   return (
     <div className="flex h-screen w-full bg-zinc-950 text-zinc-50 font-sans">
-      {/* Sidebar Placeholder */}
+      {/* Sidebar (Feature 5) */}
       <div className="hidden w-64 border-r border-zinc-800 bg-zinc-950 p-4 md:flex flex-col gap-4">
-        <h2 className="text-xl font-bold tracking-tight text-zinc-100">Chat History</h2>
-        <Button variant="secondary" className="justify-start opacity-70">
+        <h2 className="text-xl font-bold tracking-tight text-zinc-100 px-2 pb-2">Chat History</h2>
+        <Button onClick={handleNewSession} variant="secondary" className="justify-start opacity-90 transition-opacity hover:opacity-100">
           + New Session
         </Button>
+        <ScrollArea className="flex-1 w-full mt-2">
+            <div className="flex flex-col gap-2">
+                {sessions.length === 0 ? (
+                    <p className="text-sm text-zinc-500 px-2">No previous sessions.</p>
+                ) : (
+                    sessions.map((s) => (
+                        <Button
+                            key={s.id}
+                            variant="ghost"
+                            onClick={() => setActiveSessionId(s.id)}
+                            className={`justify-start text-xs font-normal truncate ${
+                                activeSessionId === s.id ? "bg-zinc-800 text-zinc-100" : "text-zinc-400 hover:text-zinc-200"
+                            }`}
+                        >
+                            {new Date(s.createdAt).toLocaleString()}
+                        </Button>
+                    ))
+                )}
+            </div>
+        </ScrollArea>
       </div>
 
       {/* Main Chat Area */}

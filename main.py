@@ -7,7 +7,7 @@ import uuid
 
 from agent import app as graph_app
 from api_schemas import ChatRequest
-from database import get_session_messages, save_message
+from database import get_session_messages, save_message, get_all_sessions
 
 app = FastAPI(
     title="LangGraph Agent API",
@@ -27,6 +27,16 @@ app.add_middleware(
 async def health_check():
     """Simple health check endpoint."""
     return {"status": "ok"}
+
+@app.get("/sessions")
+async def fetch_sessions():
+    """Returns a list of all historical chat sessions."""
+    return await get_all_sessions()
+
+@app.get("/sessions/{session_id}/messages")
+async def fetch_session_messages(session_id: str):
+    """Returns the chat history for a specific session."""
+    return await get_session_messages(session_id)
 
 async def generate_chat_stream(message: str, session_id: str):
     """Generates an SSE stream of AI agent events and persists memory."""
