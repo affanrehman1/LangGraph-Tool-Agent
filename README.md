@@ -37,9 +37,10 @@ The foundational relational database architecture has been deployed and configur
 
 ### Layer 2: Agent Tool Interface
 We've established the strict protocols and interfaces for LLM interactions.
-*   **`tools.py`**: Defines the actions the agent can take, strictly typed with Pydantic:
-    *   `fetch_user_information`: LangChain `@tool` wrapping the database query, converting the Prisma model response to an LLM-friendly JSON format. 
-    *   `simple_calculator`: A secondary tool demonstrating how to offload non-deterministic LLM math to a structured, deterministic Python execution engine.
+*   **`tools.py`**: Defines the capabilities the agent has access to, strictly typed with Pydantic:
+    *   **Preset Tools**: Integration with Langchain Community (`DuckDuckGoSearchRun`) giving the agent live internet access.
+    *   **Custom Database Tools**: `fetch_user_information` translates natural language into deterministic Prisma database queries.
+    *   **Custom Logic Tools**: `simple_calculator` offloads non-deterministic LLM math to a structured Python execution engine, and `read_local_file` allows secure text/markdown file inspection.
 
 ### Layer 3: Agent Orchestration
 We have integrated a LangGraph state machine to manage the loop between deterministic tool calling and LLM generation.
