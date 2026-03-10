@@ -7,32 +7,32 @@ from langgraph.prebuilt import ToolNode, tools_condition
 from typing import Annotated
 from typing_extensions import TypedDict
 
-from tools import fetch_user_information, simple_calculator
+from tools import fetch_user_information, simple_calculator, web_search_tool, read_local_file
 
 load_dotenv()
 
-# Define LangGraph state schema for tracking conversation history
+# State tracking schema
 class State(TypedDict):
     messages: Annotated[list, add_messages]
 
-# Initialize LLM and bind external tools
+# Setup LLM and tools
 llm = ChatGroq(model="llama-3.3-70b-versatile")
-tools = [fetch_user_information, simple_calculator]
+tools = [fetch_user_information, simple_calculator, web_search_tool, read_local_file]
 llm_with_tools = llm.bind_tools(tools)
 
-# Define agent node for invoking LLM
+# LLM node
 def chatbot(state: State):
     return {"messages": [llm_with_tools.invoke(state["messages"])]}
 
-# Define node for executing python tools requested by LLM
+# Tool execution node
 tool_executor = ToolNode(tools)
 
-# Compile LangGraph framework
+# Build graph
 graph_builder = StateGraph(State)
 graph_builder.add_node("agent", chatbot)
 graph_builder.add_node("tools", tool_executor)
 
-# Configure graph routing edges
+# Configure edges
 graph_builder.add_edge(START, "agent")
 graph_builder.add_conditional_edges("agent", tools_condition)
 graph_builder.add_edge("tools", "agent")

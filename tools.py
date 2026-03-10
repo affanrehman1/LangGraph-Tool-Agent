@@ -1,41 +1,42 @@
+import os
 from pydantic import BaseModel, Field
 from langchain_core.tools import tool
+from langchain_community.tools import DuckDuckGoSearchRun
 
 from database import get_user_by_id
 
+# 1. Preset Tools
+web_search_tool = DuckDuckGoSearchRun()
 
-# Input schema for database lookup tool
+
+# 2. DB Tool
 class GetUserSchema(BaseModel):
     user_id: str = Field(
         ...,
-        description="The unique UUID string of the User to look up in the database."
+        description="User UUID string."
     )
 
-
-# Langchain tool for fetching user profile and inventory
 @tool(args_schema=GetUserSchema)
 async def fetch_user_information(user_id: str) -> dict:
-    """Fetches user profile details and inventory from the database."""
+    """Fetch user and inventory."""
     user_record = await get_user_by_id(user_id)
     if user_record:
         return user_record.model_dump() 
     return {"error": f"No user found with ID: {user_id}"}
 
 
-# Input schema for arithmetic calculator
+# 3. Calculator
 class CalculatorSchema(BaseModel):
-    a: float = Field(..., description="The first numerical value.")
-    b: float = Field(..., description="The second numerical value.")
+    a: float = Field(..., description="First number.")
+    b: float = Field(..., description="Second number.")
     operation: str = Field(
         ..., 
-        description="The mathematical operation to perform. MUST be one of: 'add', 'subtract', 'multiply', 'divide'"
+        description="Operation: 'add', 'subtract', 'multiply', 'divide'"
     )
 
-
-# Langchain calculator tool for deterministic math logic
 @tool(args_schema=CalculatorSchema)
 def simple_calculator(a: float, b: float, operation: str) -> float | str:
-    """Performs exact mathematical calculations routing around LLM math limitations."""
+    """Compute exact math logic."""
     if operation == "add":
         return a + b
     elif operation == "subtract":
@@ -47,3 +48,29 @@ def simple_calculator(a: float, b: float, operation: str) -> float | str:
             return "Error: Cannot divide by zero."
         return a / b
     return f"Error: Unknown operation '{operation}'."
+
+
+# 4. File Tool
+class FileReaderSchema(BaseModel):
+    filepath: str = Field(
+        ...,
+        description="File name in local directory."
+    )
+
+@tool(args_schema=FileReaderSchema)
+def read_local_file(filepath: str) -> str:
+    """Read local text files securely."""
+    # Prevent directory traversal
+    base_dir = os.getcwd()
+    safe_path = os.path.abspath(os.path.join(base_dir, filepath))
+    
+    if not safe_path.startswith(base_dir):
+        return f"Error: Unauthorized access. Cannot read files outside of {base_dir}"
+        
+    try:
+        with open(safe_path, 'r', encoding='utf-8') as f:
+            return f.read()
+    except FileNotFoundError:
+        return f"Error: File '{filepath}' not found in the current directory."
+    except Exception as e:
+        return f"Error reading file: {str(e)}"
