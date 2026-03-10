@@ -28,7 +28,7 @@ export default function Home() {
   const handleSend = () => {
     if (!inputValue.trim()) return
 
-    // Optomistically add user message for layout testing
+    // Optimistically update UI with user message.
     const newUserMessage: Message = {
       id: Date.now().toString(),
       role: "user",
@@ -41,7 +41,7 @@ export default function Home() {
 
   return (
     <div className="flex h-screen w-full bg-zinc-950 text-zinc-50 font-sans">
-      {/* Sidebar Placeholder (Feature 5) */}
+      {/* Sidebar Placeholder */}
       <div className="hidden w-64 border-r border-zinc-800 bg-zinc-950 p-4 md:flex flex-col gap-4">
         <h2 className="text-xl font-bold tracking-tight text-zinc-100">Chat History</h2>
         <Button variant="secondary" className="justify-start opacity-70">

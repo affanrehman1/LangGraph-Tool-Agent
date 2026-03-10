@@ -56,6 +56,11 @@ The agent is exposed via a high-performance ASGI web server, allowing external f
     *   **Context Rehydration:** The endpoint fetches historical `HumanMessage` and `AIMessage` models from the database dynamically based on the requested session.
     *   **SSE Streaming:** It uses LangGraph's `astream_events` (v2) to generate a Server-Sent Events (SSE) stream, delivering granular real-time updates of tool executions and LLM text generation back to the client.
 
+### Layer 5: Frontend UI (Next.js 15+ App Router)
+A modern, dynamic user interface built to seamlessly consume the backend streaming API.
+*   **Core Stack:** Built natively using React 19, Tailwind CSS v4, and TypeScript.
+*   **UI Components:** Premium, fully-accessible dark-mode chat layout powered by `shadcn/ui` (Radix primitives). Features a sticky input drawer, a scrolling message container, and dynamic conversation bubbles.
+
 ## Local Development & Setup Guide
 
 Follow these steps to configure the development environment and connect to the database.
