@@ -1,13 +1,13 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import { SendHorizontal, Bot, User } from "lucide-react"
+import { useState, useEffect, useRef } from "react"
+import { SendHorizontal, Bot } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Card } from "@/components/ui/card"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 
 type Message = {
   id: string
@@ -25,6 +25,15 @@ export default function Home() {
   const [sessions, setSessions] = useState<Session[]>([])
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null)
   const [inputValue, setInputValue] = useState("")
+  const messagesEndRef = useRef<HTMLDivElement>(null)
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
+  }
+
+  useEffect(() => {
+    scrollToBottom()
+  }, [messages])
 
   // Fetch all sessions on load
   useEffect(() => {
@@ -50,7 +59,7 @@ export default function Home() {
       .then((res) => res.json())
       .then((data) => {
         setMessages(
-          data.map((m: any, i: number) => ({
+          data.map((m: { role: "user" | "ai"; content: string }, i: number) => ({
             id: i.toString(),
             role: m.role,
             content: m.content,
@@ -67,18 +76,77 @@ export default function Home() {
     }])
   }
 
-  const handleSend = () => {
+  const handleSend = async () => {
     if (!inputValue.trim()) return
+
+    const messageText = inputValue;
 
     // Optimistically update UI with user message.
     const newUserMessage: Message = {
       id: Date.now().toString(),
       role: "user",
-      content: inputValue,
+      content: messageText,
     }
 
     setMessages((prev) => [...prev, newUserMessage])
     setInputValue("")
+
+    let currentSessionId = activeSessionId;
+    if (!currentSessionId) {
+      currentSessionId = crypto.randomUUID();
+      setActiveSessionId(currentSessionId);
+      setSessions((prev) => [{ id: currentSessionId!, createdAt: new Date().toISOString() }, ...prev]);
+    }
+
+    const aiMessageId = (Date.now() + 1).toString();
+    setMessages((prev) => [...prev, { id: aiMessageId, role: "ai", content: "" }]);
+
+    try {
+      const response = await fetch("http://localhost:8000/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: messageText, session_id: currentSessionId }),
+      });
+
+      if (!response.body) throw new Error("No response body");
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder("utf-8");
+      let done = false;
+
+      while (!done) {
+        const { value, done: readerDone } = await reader.read();
+        done = readerDone;
+        if (value) {
+          const chunk = decoder.decode(value, { stream: true });
+          const lines = chunk.split("\n");
+          for (const line of lines) {
+            if (line.startsWith("data: ")) {
+              const dataStr = line.slice(6).trim();
+              if (dataStr === "[DONE]") break;
+              if (dataStr) {
+                try {
+                  const data = JSON.parse(dataStr);
+                  if (data.type === "content") {
+                    setMessages((prev) =>
+                      prev.map((msg) =>
+                        msg.id === aiMessageId
+                          ? { ...msg, content: msg.content + data.data }
+                          : msg
+                      )
+                    );
+                  }
+                } catch {
+                  // Ignore parsing errors
+                }
+              }
+            }
+          }
+        }
+      }
+    } catch (err) {
+      console.error("Chat error:", err);
+    }
   }
 
   return (
@@ -114,13 +182,13 @@ export default function Home() {
       {/* Main Chat Area */}
       <div className="flex flex-1 flex-col h-full relative">
         {/* Header */}
-        <header className="flex h-14 items-center border-b border-zinc-800 bg-zinc-950/50 px-6 backdrop-blur-sm z-10 absolute top-0 w-full">
+        <header className="flex h-14 shrink-0 items-center justify-between border-b border-zinc-800 bg-zinc-950 px-6">
           <h1 className="text-lg font-semibold text-zinc-100">AI Agent</h1>
         </header>
 
         {/* Scrollable Messages */}
-        <ScrollArea className="flex-1 w-full pt-14 pb-32">
-          <div className="flex flex-col gap-6 p-6 max-w-4xl mx-auto">
+        <ScrollArea className="flex-1 min-h-0 w-full pt-4">
+          <div className="flex flex-col gap-6 px-6 pt-2 pb-6 max-w-4xl mx-auto">
             {messages.map((m) => (
               <div
                 key={m.id}
@@ -137,21 +205,22 @@ export default function Home() {
                 </Avatar>
 
                 <Card
-                  className={`relative px-4 py-3 max-w-[85%] text-sm rounded-2xl ${
+                  className={`px-4 py-3 max-w-[85%] text-sm rounded-2xl break-words overflow-hidden ${
                     m.role === "user"
                       ? "bg-zinc-100 text-zinc-950 rounded-tr-sm border-none"
                       : "bg-zinc-900 text-zinc-200 border-zinc-800 rounded-tl-sm shadow-md"
                   }`}
                 >
-                  <p className="leading-relaxed whitespace-pre-wrap">{m.content}</p>
+                  <p className="leading-relaxed whitespace-pre-wrap break-words">{m.content}</p>
                 </Card>
               </div>
             ))}
+            <div ref={messagesEndRef} />
           </div>
         </ScrollArea>
 
         {/* Input Area */}
-        <div className="absolute bottom-0 w-full bg-gradient-to-t from-zinc-950 via-zinc-950 to-transparent pt-10 pb-6">
+        <div className="shrink-0 w-full bg-zinc-950 border-t border-zinc-800/50 pt-4 pb-6">
           <div className="mx-auto max-w-3xl px-4">
             <div className="relative flex items-center bg-zinc-900 border border-zinc-800 rounded-2xl p-2 shadow-xl focus-within:ring-1 focus-within:ring-emerald-500/50 transition-shadow">
               <Input

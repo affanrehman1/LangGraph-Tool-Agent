@@ -16,9 +16,14 @@ class State(TypedDict):
     messages: Annotated[list, add_messages]
 
 # Setup LLM and tools
-llm = ChatGroq(model="llama-3.3-70b-versatile")
+llm = ChatGroq(model="llama-3.1-8b-instant", temperature=0)
 tools = [fetch_user_information, simple_calculator, web_search_tool, read_local_file]
-llm_with_tools = llm.bind_tools(tools)
+# Apply system prompt to ensure strict JSON tool calling schema compliance.
+system_message = {
+    "role": "system",
+    "content": "You are a helpful AI assistant with access to tools. ALWAYS use the provided tool JSON schema to execute tools. NEVER output raw strings like `<|python_tag|>` or markdown code blocks for tool calls."
+}
+llm_with_tools = llm.bind_tools(tools).bind_messages([system_message])
 
 # LLM node
 def chatbot(state: State):

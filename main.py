@@ -58,26 +58,31 @@ async def generate_chat_stream(message: str, session_id: str):
     ai_full_response = ""
     
     # Stream granular updates (v2)
-    async for event in graph_app.astream_events(state, version="v2"):
-        kind = event["event"]
-        
-        # 1. Stream text chunks
-        if kind == "on_chat_model_stream":
-            content = event["data"]["chunk"].content
-            if content:
-                ai_full_response += content
-                yield f"data: {json.dumps({'type': 'content', 'data': content})}\n\n"
-                
-        # 2. Alert tool execution start
-        elif kind == "on_tool_start":
-            tool_name = event["name"]
-            tool_input = event["data"].get("input", {})
-            yield f"data: {json.dumps({'type': 'tool_start', 'tool': tool_name, 'input': tool_input})}\n\n"
+    try:
+        async for event in graph_app.astream_events(state, version="v2"):
+            kind = event["event"]
             
-        # 3. Alert tool execution end
-        elif kind == "on_tool_end":
-            tool_name = event["name"]
-            yield f"data: {json.dumps({'type': 'tool_end', 'tool': tool_name})}\n\n"
+            # 1. Stream text chunks
+            if kind == "on_chat_model_stream":
+                content = event["data"]["chunk"].content
+                if content:
+                    ai_full_response += content
+                    yield f"data: {json.dumps({'type': 'content', 'data': content})}\n\n"
+                    
+            # Stream tool initiation event
+            elif kind == "on_tool_start":
+                tool_name = event["name"]
+                tool_input = event["data"].get("input", {})
+                yield f"data: {json.dumps({'type': 'tool_start', 'tool': tool_name, 'input': tool_input})}\n\n"
+                
+            # Stream tool completion event
+            elif kind == "on_tool_end":
+                tool_name = event["name"]
+                yield f"data: {json.dumps({'type': 'tool_end', 'tool': tool_name})}\n\n"
+    except Exception as e:
+        error_message = f"\n\n[System Error: An internal error occurred during processing: {str(e)}]"
+        ai_full_response += error_message
+        yield f"data: {json.dumps({'type': 'content', 'data': error_message})}\n\n"
             
     # 4. Save the full AI response to the DB
     if ai_full_response:

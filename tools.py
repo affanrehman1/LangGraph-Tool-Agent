@@ -3,22 +3,40 @@ from pydantic import BaseModel, Field
 from langchain_core.tools import tool
 from langchain_community.tools import DuckDuckGoSearchRun
 
-from database import get_user_by_id
+from database import get_user_by_id, get_all_users
 
-# 1. Preset Tools
-web_search_tool = DuckDuckGoSearchRun()
+class WebSearchSchema(BaseModel):
+    query: str = Field(..., description="The search query.")
+
+from langchain_community.utilities import DuckDuckGoSearchAPIWrapper
+from langchain_community.tools import DuckDuckGoSearchResults
+
+@tool(args_schema=WebSearchSchema)
+def web_search_tool(query: str) -> str:
+    """Use this tool to search the live internet for information you don't already know."""
+    try:
+        # Wraps search execution to limit output payload and manage API rate limits.
+        wrapper = DuckDuckGoSearchAPIWrapper(max_results=5)
+        search = DuckDuckGoSearchResults(api_wrapper=wrapper)
+        return search.run(query)
+    except Exception as e:
+        return f"Warning: Search engine is currently unavailable due to errors or rate limits. Try answering without it if possible. (Error: {e})"
 
 
 # 2. DB Tool
 class GetUserSchema(BaseModel):
     user_id: str = Field(
-        ...,
-        description="User UUID string."
+        default="",
+        description="User UUID string. Leave empty or use 'all' to get all users."
     )
 
 @tool(args_schema=GetUserSchema)
-async def fetch_user_information(user_id: str) -> dict:
-    """Fetch user and inventory."""
+async def fetch_user_information(user_id: str = "") -> list | dict:
+    """Fetch user and inventory. Leave user_id empty to fetch ALL users."""
+    if not user_id or user_id.lower() == "all":
+        users = await get_all_users()
+        return [u.model_dump() for u in users]
+        
     user_record = await get_user_by_id(user_id)
     if user_record:
         return user_record.model_dump() 

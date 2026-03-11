@@ -13,6 +13,18 @@ async def get_user_by_id(user_id: str):
     finally:
         await db.disconnect()
 
+async def get_all_users():
+    """Retrieve all user profiles and their items."""
+    db = Prisma()
+    await db.connect()
+    try:
+        users = await db.user.find_many(
+            include={"items": True}
+        )
+        return users
+    finally:
+        await db.disconnect()
+
 async def update_item_quantity(item_id: str, new_quantity: int):
     """Update item stock quantity."""
     db = Prisma()
