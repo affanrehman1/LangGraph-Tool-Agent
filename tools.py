@@ -1,19 +1,17 @@
 import os
 from pydantic import BaseModel, Field
 from langchain_core.tools import tool
-from langchain_community.tools import DuckDuckGoSearchRun
+from langchain_community.utilities import DuckDuckGoSearchAPIWrapper
+from langchain_community.tools import DuckDuckGoSearchResults
 
 from database import get_user_by_id, get_all_users
 
 class WebSearchSchema(BaseModel):
-    query: str = Field(..., description="The search query.")
-
-from langchain_community.utilities import DuckDuckGoSearchAPIWrapper
-from langchain_community.tools import DuckDuckGoSearchResults
+    query: str = Field(..., description="The exact search query to look up on the internet.")
 
 @tool(args_schema=WebSearchSchema)
 def web_search_tool(query: str) -> str:
-    """Use this tool to search the live internet for information you don't already know."""
+    """Search the live internet for current events, facts, or any information not in your training data. Use this whenever the user asks about recent news, live data, or anything you are uncertain about."""
     try:
         # Wraps search execution to limit output payload and manage API rate limits.
         wrapper = DuckDuckGoSearchAPIWrapper(max_results=5)
@@ -27,19 +25,29 @@ def web_search_tool(query: str) -> str:
 class GetUserSchema(BaseModel):
     user_id: str = Field(
         default="",
-        description="User UUID string. Leave empty or use 'all' to get all users."
+        description=(
+            "The UUID of a specific user to look up. "
+            "Leave this field EMPTY (do not fill it in) when the user asks for multiple users, "
+            "all users, any users, or does not specify a particular ID. "
+            "Only provide a UUID here if the user gives you a specific ID."
+        )
     )
 
 @tool(args_schema=GetUserSchema)
 async def fetch_user_information(user_id: str = "") -> list | dict:
-    """Fetch user and inventory. Leave user_id empty to fetch ALL users."""
+    """
+    Fetch user profiles and their inventory items from the database.
+    IMPORTANT: If the user asks for 'all users', 'some users', 'a list of users', 'users you know',
+    or any number of users without specifying IDs, call this tool with an EMPTY user_id.
+    Only pass a specific UUID if the user explicitly provides one.
+    """
     if not user_id or user_id.lower() == "all":
         users = await get_all_users()
         return [u.model_dump() for u in users]
-        
+
     user_record = await get_user_by_id(user_id)
     if user_record:
-        return user_record.model_dump() 
+        return user_record.model_dump()
     return {"error": f"No user found with ID: {user_id}"}
 
 
@@ -54,7 +62,7 @@ class CalculatorSchema(BaseModel):
 
 @tool(args_schema=CalculatorSchema)
 def simple_calculator(a: float, b: float, operation: str) -> float | str:
-    """Compute exact math logic."""
+    """Perform exact arithmetic. Use this for ANY math calculation instead of computing it yourself."""
     if operation == "add":
         return a + b
     elif operation == "subtract":
@@ -77,7 +85,7 @@ class FileReaderSchema(BaseModel):
 
 @tool(args_schema=FileReaderSchema)
 def read_local_file(filepath: str) -> str:
-    """Read local text files securely."""
+    """Read the contents of a local text or markdown file. Use this when the user asks to read, open, or inspect a file by name."""
     # Prevent directory traversal
     base_dir = os.getcwd()
     safe_path = os.path.abspath(os.path.join(base_dir, filepath))

@@ -18,10 +18,23 @@ class State(TypedDict):
 # Setup LLM and tools
 llm = ChatGroq(model="llama-3.1-8b-instant", temperature=0)
 tools = [fetch_user_information, simple_calculator, web_search_tool, read_local_file]
-# Apply system prompt to ensure strict JSON tool calling schema compliance.
+# Apply explicit tool-calling rules optimised for llama-3.1-8b-instant.
 system_message = {
     "role": "system",
-    "content": "You are a helpful AI assistant with access to tools. ALWAYS use the provided tool JSON schema to execute tools. NEVER output raw strings like `<|python_tag|>` or markdown code blocks for tool calls."
+    "content": (
+        "You are an autonomous AI assistant. You have access to tools and MUST use them when relevant. "
+        "Follow these rules strictly:\n"
+        "1. NEVER output raw text like `<function=...>` or markdown code blocks as tool calls. "
+        "Always use the structured tool-calling interface.\n"
+        "2. USER QUERIES: If a user asks about users, people, or inventory in ANY way "
+        "(e.g. 'show me users', 'list people', 'give me 5 users', 'who do you know'), "
+        "you MUST immediately call `fetch_user_information` with an empty `user_id`. "
+        "Do NOT ask for IDs. Do NOT explain yourself. Just call the tool.\n"
+        "3. MATH: For any arithmetic, always call `simple_calculator`.\n"
+        "4. LIVE INFO: For any current events or facts you are unsure about, call `web_search_tool`.\n"
+        "5. FILES: To read a local file, call `read_local_file`.\n"
+        "6. After a tool returns data, summarise it clearly for the user."
+    )
 }
 llm_with_tools = llm.bind_tools(tools)
 
