@@ -59,7 +59,7 @@ export default function Home() {
       .then((res) => res.json())
       .then((data) => {
         setMessages(
-          data.map((m: { role: "user" | "ai"; content: string }, i: number) => ({
+          data.map((m: any, i: number) => ({
             id: i.toString(),
             role: m.role,
             content: m.content,

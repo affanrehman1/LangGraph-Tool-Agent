@@ -23,11 +23,12 @@ system_message = {
     "role": "system",
     "content": "You are a helpful AI assistant with access to tools. ALWAYS use the provided tool JSON schema to execute tools. NEVER output raw strings like `<|python_tag|>` or markdown code blocks for tool calls."
 }
-llm_with_tools = llm.bind_tools(tools).bind_messages([system_message])
+llm_with_tools = llm.bind_tools(tools)
 
 # LLM node
 def chatbot(state: State):
-    return {"messages": [llm_with_tools.invoke(state["messages"])]}
+    messages = [system_message] + state["messages"]
+    return {"messages": [llm_with_tools.invoke(messages)]}
 
 # Tool execution node
 tool_executor = ToolNode(tools)
