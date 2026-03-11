@@ -1,107 +1,77 @@
 # Autonomous LangGraph Tool-Calling Agent
 
 ## Introduction
-This project provides a robust backend architecture for an autonomous AI agent. By integrating LangGraph, FastAPI, and the Prisma ORM, this system enables Large Language Models (LLMs) to securely and deterministically interact with a structured PostgreSQL database. 
+This project provides a robust full-stack architecture for an autonomous AI agent. By tightly integrating LangGraph, FastAPI, Next.js, and the Prisma ORM, this system enables smaller, rapid Large Language Models (LLMs) to securely and deterministically interact with a structured PostgreSQL database and the open web.
 
-Instead of relying solely on pre-trained knowledge to generate text, the agent dynamically writes and executes database queries, performs programmatic calculations, and streams its execution reasoning back to external client applications via a reactive REST API.
+Instead of relying solely on pre-trained knowledge, the agent uses strict rule-based tool calling to dynamically write execute database queries, perform programmatic calculations, and stream its execution reasoning back to a premium React frontend via a reactive REST API.
 
-## Architecture Overview
+---
 
-This project is built using a layered architecture to ensure separation of concerns, scalability, and type safety across the entire stack. 
+## Final Project Architecture
 
-1. **Database Layer (Prisma & PostgreSQL):** The foundational data layer. It uses Prisma ORM to provide strict type safety and auto-generated database interaction functions. The schema is currently normalized for an Inventory Management system involving `Users` and `Items`.
-2. **API Layer (FastAPI):** An asynchronous REST API (`main.py`) that wraps the LangGraph agent, exposing it to the internal network via Server-Sent Events (SSE) streaming connections. Strict input validation is handled by Pydantic (`api_schemas.py`).
-3. **Tool/Action Layer (Pydantic & LangChain):** The strict Pydantic models that define the input schemas for our tools. This layer translates our backend API functions into a JSON schema the LLM can understand and interact with deterministically.
-4. **Agent Orchestration Layer (LangGraph):** The state-machine orchestrator. It manages the conversation state, routes user queries to the Groq LLM API, evaluates if a tool call is required, executes the tool, and routes the database response back to the LLM for final generation.
+This project is built using a 5-layer architecture to ensure separation of concerns, scalability, and type safety across the entire stack.
+
+1. **Database Layer (Prisma & PostgreSQL):** The foundational data layer. It uses Prisma ORM to provide strict type safety and auto-generated database interaction functions. The schema is normalized for an Inventory Management system involving `Users` and `Items`, as well as conversational memory models `Sessions` and `Messages`.
+2. **API Layer (FastAPI):** An asynchronous REST API (`main.py`) that wraps the LangGraph agent, exposing it to the frontend via Server-Sent Events (SSE) streaming connections. Strict input validation is handled by Pydantic (`api_schemas.py`).
+3. **Tool/Action Layer (Pydantic & LangChain):** The strict Pydantic models that define the input schemas for our tools. This layer translates our backend API functions into a JSON schema the LLM can understand and interact with deterministically. Includes tools for Live Web Search, Calculator logic, File Inspection, and Database Profile lookups.
+4. **Agent Orchestration Layer (LangGraph):** The state-machine orchestrator. It manages the conversation state, routes user queries to the Groq LLM API, evaluates if a tool call is required, executes the tool securely, and routes the response back to the LLM for final generation.
+5. **Frontend UI Layer (Next.js 15):** The user-facing application built with React 19, Tailwind CSS v4, and Radix primitives (`shadcn/ui`). It connects to the FastAPI backend, parses the SSE stream in real-time, and renders a dynamic, persistent chat interface.
+
+---
 
 ## Technology Stack
 
-### Core Technologies
+### Backend
 *   **Language:** Python `3.12` (Required for Pydantic v2 core-schema binaries)
 *   **Database:** PostgreSQL (Hosted via Supabase)
 *   **ORM:** Prisma Client Python `^0.15.0`
 *   **API Framework:** FastAPI `^0.115.0` (with Uvicorn `^0.30.6`)
-*   **LLM Inference:** Groq API (`llama-3.3-70b-versatile`)
-*   **Agent Framework:** LangGraph, LangChain Core & Pydantic `(Installed)`
+*   **LLM Inference:** Groq API (`llama-3.1-8b-instant`) — *Optimized via strict system rules to act as a fast, reliable tool-caller.*
+*   **Agent Framework:** LangGraph, LangChain Core & Pydantic
 
-## Current System Capabilities
+### Frontend
+*   **Framework:** Next.js `15.2.0` (App Router)
+*   **Library:** React `19.0.0` The DOM renderer.
+*   **Styling:** Tailwind CSS `4.0.0`
+*   **Components:** `shadcn/ui` (Avatar, Button, Card, Input, ScrollArea)
+*   **Icons:** `lucide-react`
 
-### Layer 1: Database Architecture
-The foundational relational database architecture has been deployed and configured.
-*   **`schema.prisma`**: Defines the core relational data models:
-    *   **Inventory Models:** `User` and `Item` for catalog management with cascading deletes.
-    *   **Memory Models:** `Session` and `Message` to persistently store Agent conversational history.
-*   **`database.py`**: Contains highly optimized, asynchronous interaction functions:
-    *   `get_user_by_id` & `update_item_quantity`: Custom queries for inventory manipulation.
-    *   `get_session_messages` & `save_message`: Queries handling the fetching and storing of LLM chat sequences.
+---
 
-### Layer 2: Agent Tool Interface
-We've established the strict protocols and interfaces for LLM interactions.
-*   **`tools.py`**: Defines the capabilities the agent has access to, strictly typed with Pydantic:
-    *   **Preset Tools**: Integration with Langchain Community (`DuckDuckGoSearchRun`) giving the agent live internet access.
-    *   **Custom Database Tools**: `fetch_user_information` translates natural language into deterministic Prisma database queries.
-    *   **Custom Logic Tools**: `simple_calculator` offloads non-deterministic LLM math to a structured Python execution engine, and `read_local_file` allows secure text/markdown file inspection.
+## Step-by-Step Native Setup Guide
 
-### Layer 3: Agent Orchestration
-We have integrated a LangGraph state machine to manage the loop between deterministic tool calling and LLM generation.
-*   **`agent.py`**: The core graph architecture defining nodes and edges:
-    *   **LLM Node:** An `agent` node that processes conversational state through the `llama-3.3-70b-versatile` model, analyzing whether standard text or a tool execution is required.
-    *   **Tool Node:** A `tools` node that maps the LLM's requested tool securely to our underlying Python functions.
-    *   **Conditional Routing:** Automated edge routing that loops execution between the LLM and the Tool Node until the agent synthesizes a cohesive final response.
-
-### Layer 4: API & Streaming Server
-The agent is exposed via a high-performance ASGI web server, allowing external frontends to communicate with the Python logic.
-*   **`api_schemas.py`**: Defines strict Pydantic models (like `ChatRequest`) ensuring frontend payloads are validated before reaching the agent. Crucially, handles `session_id` payload ingestion to tie incoming text to persistent histories.
-*   **`main.py`**: A FastAPI application featuring a `/chat` POST endpoint. 
-    *   **Context Rehydration:** The endpoint fetches historical `HumanMessage` and `AIMessage` models from the database dynamically based on the requested session.
-    *   **SSE Streaming:** It uses LangGraph's `astream_events` (v2) to generate a Server-Sent Events (SSE) stream, delivering granular real-time updates of tool executions and LLM text generation back to the client.
-
-### Layer 5: Frontend UI (Next.js 15+ App Router)
-A modern, dynamic user interface built to seamlessly consume the backend streaming API.
-*   **Core Stack:** Built natively using React 19, Tailwind CSS v4, and TypeScript.
-*   **Chat Interface:** Premium, fully-accessible dark-mode layout powered by `shadcn/ui` (Radix primitives). Features a sticky input drawer, a scrolling message container, and dynamic conversation bubbles.
-*   **Sidebar Navigation (Memory):** Features a collapsible History sidebar that automatically fetches and lists previous PostgreSQL database sessions, allowing users to hot-swap between persistent agent conversations.
-
-## Local Development & Setup Guide
-
-Follow these steps to configure the development environment and connect to the database.
+Follow these steps to configure the development environment, seed the database, and spin up both the frontend and backend servers.
 
 ### 1. Prerequisites
-Ensure the following are installed on your local machine:
-*   Python 3.12 (Strict requirement).
-*   Node.js (Required strictly for the Prisma CLI engine).
-*   Git.
+Ensure the following are installed and accessible in your system's PATH:
+*   **Python 3.12**
+*   **Node.js** (v18+)
+*   **Git**
 
-### 2. Clone and Initialize
+### 2. Clone and Initialize the Backend
 Clone the repository and set up an isolated Python virtual environment.
 
 ```bash
 git clone https://github.com/your-username/langgraph-tool-agent.git
-cd langgraph-tool-agent
+cd "langgraph-tool-agent"
 
 # Create the virtual environment
 python -m venv .venv
 
 # Activate the virtual environment
-# Windows:
-.venv\Scripts\activate 
-# macOS/Linux:
+# On Windows:
+.\.venv\Scripts\activate 
+# On macOS/Linux:
 source .venv/bin/activate
-```
 
-### 3. Install Dependencies
-Install the required packages from the requirements file.
-
-```bash
+# Install strictly-versioned Python packages
 pip install -r requirements.txt
 ```
 
-### 4. Environment Configuration
+### 3. Environment Configuration
 The application requires external credentials to function. You must create a `.env` file in the root directory.
 
-1.  Create a file named `.env`.
-2.  Add the following variables, replacing the bracketed sections with your actual credentials:
-
+Create a file named `.env` and insert your API keys:
 ```env
 # Supabase PostgreSQL Connection String
 # Found in Supabase -> Project Settings -> Database -> URI
@@ -112,23 +82,46 @@ DATABASE_URL="postgresql://[USER]:[PASSWORD]@[HOST]:[PORT]/[DATABASE]"
 GROQ_API_KEY="gsk_your_key_here"
 ```
 
-### 5. Generate and Push Database Client
-With the `.env` file configured, generate the Prisma Python client. This process reads your schema and downloads the customized Python types required to interact with your specific database structure.
+### 4. Database Schema Push & Client Generation
+With the `.env` file configured, generate the Prisma Python client and push your schema to the remote PostgreSQL instance.
 
 ```bash
+# Downloads the customized Python types required to interact with your database
 prisma generate
-```
 
-After generating the client, you must push your local schema over to your live Supabase database so the tables are actually created:
-
-```bash
+# Applies the schema in schema.prisma to your live Supabase database
 prisma db push
 ```
 
-### 6. Run the API Server
-Start the FastAPI server using Uvicorn. This will expose the LangGraph agent and begin listening for incoming requests.
+### 5. Seed the Database
+Do not skip this step! The agent needs data to interact with. Run the automated seed script to populate your database with mock users and inventory items.
+
+```bash
+python seed.py
+```
+*You should see a success message indicating users and items were created.*
+
+### 6. Start the FastAPI Backend
+Start the high-performance ASGI web server exposing the LangGraph agent to the network. Keep this terminal open.
 
 ```bash
 uvicorn main:app --reload
 ```
-You can verify the backend is running by navigating to `http://localhost:8000/health` in your browser.
+*The backend is now live on `http://localhost:8000`. You can verify it by visiting `http://localhost:8000/health`.*
+
+### 7. Initialize and Start the Next.js Frontend
+Open a **new, separate terminal window**. Navigate to the frontend directory to run the UI.
+
+```bash
+# Navigate to the frontend directory
+cd "langgraph-tool-agent/frontend"
+
+# Install Node dependencies
+npm install
+
+# Start the Next.js development server
+npm run dev
+```
+
+### 8. Use the Project
+Open your web browser and navigate to **`http://localhost:3000`**. You are now ready to chat seamlessly with your autonomous, database-aware AI agent!
